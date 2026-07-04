@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Сотрудник</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+    h2 { font-size: 20px; font-weight: bold; margin-bottom: 25px; text-align: center; width: 480px; }
+    
+    .form-container { display: grid; grid-template-columns: 130px 280px 20px; row-gap: 10px; align-items: center; width: 480px; }
+    label { font-size: 13px; text-align: right; padding-right: 15px; }
+    input[type="text"], input[type="date"], select { padding: 3px; border: 1px solid #7a7a7a; font-family: inherit; width: 100%; box-sizing: border-box; font-size: 13px; }
+    
+    .required-star { color: red; font-size: 14px; padding-left: 5px; }
+    
+    .upload-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .custom-file-btn { padding: 3px 12px; background: #e1e1e1; border: 1px solid #adadad; cursor: pointer; font-size: 13px; border-radius: 2px; display: inline-block; }
+    #photo-input { display: none; }
+    
+    .photo-preview-box { grid-column: 2; margin-top: 5px; }
+    .photo-preview-box img { width: 80px; height: 80px; object-fit: cover; border: 1px solid #000; }
+
+    .btn-row { grid-column: 2; display: flex; gap: 15px; margin-top: 15px; }
+    .btn-action { padding: 4px 20px; background: #e1e1e1; border: 1px solid #adadad; cursor: pointer; font-size: 13px; color: #000; text-decoration: none; text-align: center; }
+    
+    .footer-note { font-size: 12px; color: red; margin-top: 25px; font-style: italic; }
+    .info-label { grid-column: 2; font-size: 11px; color: #000; margin-top: -5px; }
+</style>
+</head>
+<body>
+
+<h2>{% if employee %}Редактирование сотрудника{% else %}Создание сотрудника{% endif %}</h2>
+
+<form id="form">
+    <div class="form-container">
+        <label>Фамилия:</label>
+        <input type="text" name="last_name" value="{{ employee.last_name if employee else '' }}" required>
+        <span class="required-star">*</span>
+
+        <label>Имя:</label>
+        <input type="text" name="first_name" value="{{ employee.first_name if employee else '' }}" required>
+        <span class="required-star">*</span>
+
+        <label>Отчество:</label>
+        <input type="text" name="middle_name" value="{{ employee.middle_name if employee and employee.middle_name is not none else '' }}">
+        <span></span>
+
+        <label>Телефон:</label>
+        <input type="text" name="phone_number" value="{{ employee.phone_number if employee and employee.phone_number is not none else '' }}">
+        <span></span>
+
+        <label>Дата рождения:</label>
+        <input type="date" name="birthday" value="{{ employee.birthday if employee else '' }}" required>
+        <span class="required-star">*</span>
+
+        <label>Пол:</label>
+        <select name="gender" required>
+            <option value="" disabled {% if not employee %}selected{% endif %}>Выберите пол</option>
+            <option value="Мужчина" {% if employee and employee.gender.value == "Мужчина" %}selected{% endif %}>Мужчина</option>
+            <option value="Женщина" {% if employee and employee.gender.value == "Женщина" %}selected{% endif %}>Женщина</option>
+        </select>
+        <span class="required-star">*</span>
+
+        <label>Фото:</label>
+        <div class="upload-row">
+            <label class="custom-file-btn" for="photo-input">загрузить</label>
+            <input type="file" id="photo-input" name="photo" accept="image/*">
+        </div>
+        <span></span>
+
+        <div class="info-label" id="file-info">Макс размер фото 200 кБ</div>
+        <span></span>
+
+        <div class="photo-preview-box" id="preview-box">
+            {% if employee and employee.photo_path %}
+                <img id="img-element" src="/{{ employee.photo_path }}" alt="Preview">
+            {% else %}
+                <img id="img-element" style="display:none;" alt="Preview">
+            {% endif %}
+        </div>
+        <span></span>
+
+        <div class="btn-row">
+            <button type="submit" class="btn-action">Сохранить</button>
+            <a href="/" class="btn-action">Отмена</a>
+        </div>
+    </div>
+</form>
+
+<div class="footer-note">
+    * обязательные поля
+</div>
+
+<script>
+const id = {{ employee.id if employee else "null" }};
+const photoInput = document.getElementById("photo-input");
+const fileInfo = document.getElementById("file-info");
+const imgElement = document.getElementById("img-element");
+
+photoInput.onchange = () => {
+    const [file] = photoInput.files;
+    if (file) {
+        if (file.size > 200 * 1024) {
+            alert("Ошибка: Максимальный размер фотографии не должен превышать 200 кБ!");
+            photoInput.value = "";
+            fileInfo.textContent = "Макс размер фото 200 кБ";
+            return;
+        }
+        fileInfo.textContent = file.name;
+        imgElement.src = URL.createObjectURL(file);
+        imgElement.style.display = "block";
+    }
+};
+
+window.onpaste = (e) => {
+    const items = (e.clipboardData || e.clipboardData.items);
+    for (let item of items) {
+        if (item.type.indexOf("image") === 0) {
+            const file = item.getAsFile();
+            if (file.size > 200 * 1024) {
+                alert("Ошибка: Вставленное изображение превышает лимит в 200 кБ!");
+                return;
+            }
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            photoInput.files = dataTransfer.files;
+
+            fileInfo.textContent = "Изображение из буфера.png";
+            imgElement.src = URL.createObjectURL(file);
+            imgElement.style.display = "block";
+            break;
+        }
+    }
+};
+
+document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    if (!photoInput.files.length) {
+        formData.delete("photo");
+    }
+
+    const url = id ? `/employees/${id}` : "/employees/";
+    const method = id ? "PATCH" : "POST";
+
+    const response = await fetch(url, {
+        method,
+        body: formData
+    });
+
+    if (response.ok) {
+        window.location.href = "/";
+    } else {
+        const errData = await response.json();
+        alert("Произошла ошибка при сохранении: " + JSON.stringify(errData.detail));
+    }
+};
+</script>
+</body>
+</html>

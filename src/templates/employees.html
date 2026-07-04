@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<title>Реестр сотрудников</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+    .header-container { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; width: 100%; max-width: 900px; }
+    h2 { margin: 0; font-size: 20px; font-weight: bold; }
+    .add-link { text-decoration: none; color: #0066cc; font-style: italic; font-size: 13px; }
+    .add-link:hover { text-decoration: underline; }
+    
+    .filter-box { border: 1px solid #000; padding: 15px; margin-bottom: 20px; width: 100%; max-width: 900px; box-sizing: border-box; }
+    .search-row { margin-bottom: 15px; }
+    .search-input { width: 200px; padding: 3px; border: 1px solid #7a7a7a; }
+    .filter-row { display: flex; gap: 30px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: bold; }
+    .checkbox-list { display: flex; flex-direction: column; gap: 2px; font-weight: normal; }
+    .age-inputs { display: flex; gap: 5px; align-items: center; font-weight: normal; }
+    .age-input { width: 50px; padding: 3px; border: 1px solid #7a7a7a; text-align: center; }
+    .search-btn { padding: 4px 15px; background: #e1e1e1; border: 1px solid #adadad; cursor: pointer; font-size: 13px; }
+    
+    table { width: 100%; max-width: 900px; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: middle; }
+    th { background: #fff; font-weight: bold; font-style: italic; }
+    .photo { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; transition: transform 0.2s ease; cursor: pointer; display: block; }
+    .photo:hover { transform: scale(3); z-index: 10; position: relative; border: 1px solid #000; }
+    
+    .text-male { color: #0066cc; }
+    .text-female { color: #cc0066; font-style: italic; }
+    .action-link { text-decoration: underline; color: #0066cc; font-style: italic; background: none; border: none; padding: 0; font-family: inherit; font-size: 13px; cursor: pointer; }
+    .del-btn { color: #0066cc; }
+
+    .pagination { display: flex; flex-direction: column; gap: 5px; margin-top: 20px; font-size: 13px; }
+    .pagination-title { font-size: 13px; }
+    .pages-container { display: flex; gap: 2px; }
+    .page-btn { padding: 2px 8px; border: 1px solid #7a7a7a; background: #fff; cursor: pointer; text-decoration: none; color: #0066cc; font-size: 13px; }
+    .page-btn.active { color: #000; border: 1px solid #000; background: #fff; pointer-events: none; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header-container">
+    <h2>Реестр сотрудников</h2>
+    <a href="/new" class="add-link">+ Добавить сотрудника</a>
+</div>
+
+<div class="filter-box">
+    <div class="search-row">
+        <input id="search" class="search-input" placeholder="Поиск">
+    </div>
+    <div class="filter-row">
+        <div class="filter-group">
+            <span>Пол:</span>
+            <div class="checkbox-list">
+                <label><input type="checkbox" id="male" checked> Муж</label>
+                <label><input type="checkbox" id="female" checked> Жен</label>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span>Возраст:</span>
+            <div class="age-inputs">
+                <input id="ageFrom" class="age-input" type="text" placeholder="с">
+                <input id="ageTo" class="age-input" type="text" placeholder="по">
+            </div>
+        </div>
+
+        <button class="search-btn" onclick="applyFilters()">Поиск</button>
+    </div>
+</div>
+
+<table>
+<thead>
+<tr>
+    <th style="width: 50px;">№ id</th>
+    <th style="width: 50px;">Фото</th>
+    <th>ФИО</th>
+    <th>Возраст</th>
+    <th>Телефон</th>
+    <th>Пол</th>
+    <th>Действие</th>
+</tr>
+</thead>
+<tbody id="table-body"></tbody>
+</table>
+
+<div class="pagination">
+    <div class="pagination-title">Страницы</div>
+    <div id="pagination-pages" class="pages-container"></div>
+</div>
+
+<script>
+let employees = {{ employees | tojson }};
+let filtered = employees;
+
+let page = 1;
+const perPage = 2;
+
+function calcAge(birthday) {
+    if (!birthday) return "";
+    const b = new Date(birthday);
+    const diff = Date.now() - b.getTime();
+    const age = Math.floor(diff / (1000*60*60*24*365.25));
+    return `${age} лет`;
+}
+
+render();
+
+function render() {
+    const start = (page - 1) * perPage;
+    const data = filtered.slice(start, start + perPage);
+
+    document.getElementById("table-body").innerHTML = data.map(e => {
+        const imgSrc = e.photo_path ? `/${e.photo_path}` : 'https://placehold.co/40x40?text=No';
+        const genderClass = e.gender === "Мужчина" ? "text-male" : "text-female";
+        const genderText = e.gender === "Мужчина" ? "Муж." : "Жен.";
+        
+        return `
+            <tr>
+                <td>${e.id}</td>
+                <td>
+                    <img class="photo" src="${imgSrc}" alt="Avatar">
+                </td>
+                <td>${e.last_name} ${e.first_name} ${e.middle_name || ""}</td>
+                <td>${calcAge(e.birthday)}</td>
+                <td>${e.phone_number || ""}</td>
+                <td class="${genderClass}">${genderText}</td>
+                <td>
+                    <a href="/${e.id}/edit" class="action-link">Ред.</a>, 
+                    <button onclick="del(${e.id})" class="action-link del-btn">удал.</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filtered.length / perPage) || 1;
+    let html = "";
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    document.getElementById("pagination-pages").innerHTML = html;
+}
+
+function goToPage(p) {
+    page = p;
+    render();
+}
+
+function applyFilters() {
+    const q = document.getElementById("search").value.toLowerCase().trim();
+    const male = document.getElementById("male").checked;
+    const female = document.getElementById("female").checked;
+    const from = document.getElementById("ageFrom").value ? +document.getElementById("ageFrom").value : 0;
+    const to = document.getElementById("ageTo").value ? +document.getElementById("ageTo").value : 999;
+  
+    filtered = employees.filter(e => {
+        const firstName = (e.first_name || "").toLowerCase();
+        const lastName = (e.last_name || "").toLowerCase();
+        const middleName = (e.middle_name || "").toLowerCase();
+        const phone = (e.phone_number || "").toLowerCase();
+        
+        const b = new Date(e.birthday);
+        const age = Math.floor((Date.now() - b.getTime()) / (1000 * 60 * 60 * 24 * 365.25)) || 0;
+
+        const fullCombinedPattern = `${lastName} ${firstName} ${middleName}`.trim().replace(/\s+/g, ' ');
+        const alternativePattern = `${firstName} ${middleName} ${lastName}`.trim().replace(/\s+/g, ' ');
+
+        const matchesSearch = q === "" || 
+            fullCombinedPattern.includes(q) || 
+            alternativePattern.includes(q) || 
+            phone.includes(q) ||
+            age.toString() === q;
+        const genderOk =
+            (male && e.gender === "Мужчина") ||
+            (female && e.gender === "Женщина");
+
+        return matchesSearch && genderOk && age >= from && age <= to;    });
+
+    page = 1;
+    render();
+}
+
+async function del(id) {
+    if (!confirm("Удалить сотрудника?")) return;
+    await fetch(`/employees/${id}`, { method: "DELETE" });
+    location.reload();
+}
+</script>
+</body>
+</html>
