@@ -7,4 +7,6 @@ COPY . /app
 
 RUN uv sync --frozen
 
+ENV PYTHONPATH=/app/src
+
 CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "7860"]
